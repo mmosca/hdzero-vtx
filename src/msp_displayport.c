@@ -318,7 +318,10 @@ uint8_t msp_read_one_frame() {
 #endif
                         msp_set_osd_canvas();
                     } else if (msp_cmp_fc_variant("INAV")) {
-                        init_table_unsupported = 1;
+                        // init_table_unsupported = 1;
+#ifdef INIT_VTX_TABLE
+                        InitVtxTable();
+#endif
                         msp_set_inav_osd_canvas();
                     }
                 }
@@ -893,7 +896,7 @@ void parse_vtx_config() {
 
     fc_lock |= FC_VTX_CONFIG_LOCK;
 
-    if (!msp_cmp_fc_variant("BTFL") && !msp_cmp_fc_variant("EMUF") && !msp_cmp_fc_variant("QUIC") && !msp_cmp_fc_variant("INAV")) {
+    if (!msp_cmp_fc_variant("BTFL") && !msp_cmp_fc_variant("EMUF") && !msp_cmp_fc_variant("QUIC")) {
         return;
     }
     if (!msp_rx_buf[0]) {
