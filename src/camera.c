@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "common.h"
 #include "dm6300.h"
 #include "global.h"
 #include "hardware.h"
@@ -30,7 +31,8 @@ void camera_type_detect(void) {
     runcam_type_detect();
     if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V1 ||
         camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2 ||
-        camera_type == CAMERA_TYPE_RUNCAM_NANO_90) {
+        camera_type == CAMERA_TYPE_RUNCAM_NANO_90 ||
+        camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3) {
         camera_mfr = CAMERA_MFR_RUNCAM;
 #ifdef _DEBUG_CAMERA
         debugf("\r\ncamera mfr : RUNCAM");
@@ -41,19 +43,127 @@ void camera_type_detect(void) {
 }
 
 void camera_ratio_detect(void) {
-    if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V1) {
+    switch (camera_type) {
+    case CAMERA_TYPE_RUNCAM_MICRO_V1:
         camRatio = 0;
-    } else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2) {
-        if (camera_setting_reg_set[11] == 0)
-            camRatio = 1;
-        else
-            camRatio = 0;
-    } else if (camera_type == CAMERA_TYPE_RUNCAM_NANO_90) {
+        break;
+    case CAMERA_TYPE_RUNCAM_MICRO_V2:
+    case CAMERA_TYPE_RUNCAM_MICRO_V3:
+        camRatio = (camera_setting_reg_set[11] == 0);
+        break;
+    case CAMERA_TYPE_RUNCAM_NANO_90:
         camRatio = 1;
-    } else
+        break;
+#ifdef HDZERO_ECO
+    case CAMERA_TYPE_OUTDATED:
+        camRatio = 1;
+        break;
+#endif
+    default:
         camRatio = 0;
+        break;
+    }
 }
 
+#ifdef USE_TP9950
+void camera_mode_detect(uint8_t init) {
+
+    uint32_t frame = 0;
+    uint32_t agc_en = 0;
+    uint8_t id = 0;
+
+    init = 0;
+
+    TC3587_RSTB = 0;
+    WAIT(100);
+    TC3587_RSTB = 1;
+    WAIT(100);
+
+    Set_720P60_8bit(0);
+
+#ifdef _DEBUG_MODE
+    debugf("\r\nchipID");
+#endif
+    id = I2C_Read8(ADDR_TP9950, 0xfe);
+#ifdef _DEBUG_MODE
+    debugf("\r\n    fe:%2x", id);
+#endif
+
+    id = I2C_Read8(ADDR_TP9950, 0xff);
+#ifdef _DEBUG_MODE
+    debugf("\r\n    ff:%2x\r\n", id);
+#endif
+    WAIT(200);
+
+    I2C_Write8(ADDR_TP9950, 0x26, 0x01);
+    I2C_Write8(ADDR_TP9950, 0x07, 0xC0);
+    I2C_Write8(ADDR_TP9950, 0x0B, 0xC0);
+    I2C_Write8(ADDR_TP9950, 0x22, 0x35);
+    agc_en = I2C_Read8(ADDR_TP9950, 0x06);
+    agc_en &= 0xFB;
+    I2C_Write8(ADDR_TP9950, 0x06, agc_en);
+
+    I2C_Write8(ADDR_TP9950, 0x02, 0xca);
+    I2C_Write8(ADDR_TP9950, 0x0b, 0xc0);
+    I2C_Write8(ADDR_TP9950, 0x0c, 0x03);
+    I2C_Write8(ADDR_TP9950, 0x0d, 0x50);
+    I2C_Write8(ADDR_TP9950, 0x15, 0x13);
+    I2C_Write8(ADDR_TP9950, 0x16, 0x16);
+    I2C_Write8(ADDR_TP9950, 0x17, 0x00);
+    I2C_Write8(ADDR_TP9950, 0x18, 0x19);
+    I2C_Write8(ADDR_TP9950, 0x19, 0xD0);
+    I2C_Write8(ADDR_TP9950, 0x1a, 0x25);
+    I2C_Write8(ADDR_TP9950, 0x20, 0x30);
+    I2C_Write8(ADDR_TP9950, 0x21, 0x84);
+    I2C_Write8(ADDR_TP9950, 0x22, 0x36);
+    I2C_Write8(ADDR_TP9950, 0x23, 0x3c);
+    I2C_Write8(ADDR_TP9950, 0x26, 0x05);
+    I2C_Write8(ADDR_TP9950, 0x2b, 0x60);
+    I2C_Write8(ADDR_TP9950, 0x2c, 0x0a);
+    I2C_Write8(ADDR_TP9950, 0x2d, 0x30);
+    I2C_Write8(ADDR_TP9950, 0x2e, 0x70);
+    I2C_Write8(ADDR_TP9950, 0x30, 0x48);
+    I2C_Write8(ADDR_TP9950, 0x31, 0xbb);
+    I2C_Write8(ADDR_TP9950, 0x32, 0x2e);
+    I2C_Write8(ADDR_TP9950, 0x33, 0x90);
+    I2C_Write8(ADDR_TP9950, 0x39, 0x1c);
+    I2C_Write8(ADDR_TP9950, 0x3B, 0x26);
+    I2C_Write8(ADDR_TP9950, 0x18, 0x19);
+    I2C_Write8(ADDR_TP9950, 0x40, 0x08);
+    I2C_Write8(ADDR_TP9950, 0x13, 0x04);
+    I2C_Write8(ADDR_TP9950, 0x14, 0x04);
+    I2C_Write8(ADDR_TP9950, 0x40, 0x00);
+    I2C_Write8(ADDR_TP9950, 0x35, 0x05);
+    I2C_Write8(ADDR_TP9950, 0xfa, 0x08);
+    I2C_Write8(ADDR_TP9950, 0x4C, 0x40);
+    I2C_Write8(ADDR_TP9950, 0x4e, 0x05);
+
+    I2C_Write8(ADDR_TP9950, 0x1c, 0x06);
+    I2C_Write8(ADDR_TP9950, 0x1d, 0x72);
+    // **** soft reset **** //
+    I2C_Write8(ADDR_TP9950, 0x06, 0xb2);
+
+    video_format = VDO_FMT_720P60;
+    camera_type = CAMERA_TYPE_OUTDATED;
+    camera_ratio_detect();
+    LED_BLUE_ON;
+    led_status = ON;
+
+    RF_BW = BW_27M;
+    RF_BW_last = RF_BW;
+
+#ifdef _RF_CALIB
+    WAIT(1000);
+    if (I2C_Read8(ADDR_TP9950, 0x01) != 0x7E) { // if camera lost
+        WriteReg(0, 0x50, 0x01);                // set to video pattern
+    }
+    RF_POWER = 0;
+    RF_FREQ = 0;
+    Init_6300RF(RF_FREQ, RF_POWER);
+    DM6300_AUXADC_Calib();
+#endif
+}
+#else
 void camera_mode_detect(uint8_t init) {
     uint8_t cycles = 4;
     uint8_t loss = 0;
@@ -84,7 +194,7 @@ void camera_mode_detect(uint8_t init) {
         Init_TC3587(0);
         video_format = VDO_FMT_720P60;
         I2C_Write16(ADDR_TC3587, 0x0058, 0x00e0);
-    } else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2) {
+    } else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2 || camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3) {
         if (camera_setting_reg_set[11] == 3) {
             Set_1080P30(IS_RX);
             video_format = VDO_FMT_1080P30;
@@ -157,6 +267,7 @@ void camera_mode_detect(uint8_t init) {
         debugf("27M");
 #endif
 }
+#endif
 
 void camera_button_init() {
     WriteReg(0, 0x17, 0xC0);
@@ -280,11 +391,11 @@ void camera_setting_reg_eep_update(void) {
         camera_setting_reg_eep[camera_profile_menu][i] = camera_setting_reg_menu[i];
 }
 
-uint8_t camera_set(uint8_t *camera_setting_reg, uint8_t save) {
+uint8_t camera_set(uint8_t *camera_setting_reg, uint8_t save, uint8_t init) {
     uint8_t ret = 0;
     if (camera_mfr == CAMERA_MFR_RUNCAM) {
         ret = runcam_set(camera_setting_reg);
-        if (save)
+        if (save || (init & ret))
             runcam_save();
     }
 
@@ -295,10 +406,13 @@ void camera_init(void) {
     camera_type_detect();
     camera_setting_read();
     camera_setting_reg_menu_update();
-    camera_set(camera_setting_reg_menu, 1);
+    reset_isp_need = camera_set(camera_setting_reg_menu, 0, 1);
 
-    if (camera_mfr == CAMERA_MFR_RUNCAM)
-        runcam_reset_isp();
+    if (reset_isp_need) {
+        if (camera_mfr == CAMERA_MFR_RUNCAM) {
+            runcam_reset_isp();
+        }
+    }
 
     camera_mode_detect(1);
 
@@ -341,8 +455,10 @@ void camera_menu_draw_bracket(void) {
 void camera_menu_draw_value(void) {
     const char *wb_mode_str[] = {"   AUTO", " MANUAL"};
     const char *switch_str[] = {"    OFF", "     ON"};
+    const char *hv_flip_str[] = {"    OFF", "     ON", " V ONLY", " H ONLY"};
     const char *resolution_runcam_micro_v2[] = {"      4:3 ", " 16:9CROP ", " 16:9FULL ", "  1080@30 "};
     const char *resolution_runcam_nano_90[] = {"   540P@90", "540@90CROP", "   540P@60", "960X720@60"};
+    const char *resolution_runcam_micro_v3[] = {"      4:3 ", " 16:9CROP ", " 16:9FULL ", "  1080@30 "};
 
     uint8_t str[4];
     uint8_t i;
@@ -409,6 +525,8 @@ void camera_menu_draw_value(void) {
                 strcpy(&osd_buf[i][osd_menu_offset + 25], str);
                 break;
             case CAM_STATUS_HVFLIP:     // hv flip
+                strcpy(&osd_buf[i][osd_menu_offset + 21], hv_flip_str[camera_setting_reg_menu[i - 1]]);
+                break;
             case CAM_STATUS_NIGHT_MODE: // night mode
             case CAM_STATUS_LED_MODE:   // led mode
                 strcpy(&osd_buf[i][osd_menu_offset + 21], switch_str[camera_setting_reg_menu[i - 1]]);
@@ -423,6 +541,8 @@ void camera_menu_draw_value(void) {
                     strcpy(&osd_buf[i][osd_menu_offset + 19], resolution_runcam_micro_v2[camera_setting_reg_menu[i - 1]]);
                 } else if (camera_type == CAMERA_TYPE_RUNCAM_NANO_90) {
                     strcpy(&osd_buf[i][osd_menu_offset + 19], resolution_runcam_nano_90[camera_setting_reg_menu[i - 1]]);
+                } else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3) {
+                    strcpy(&osd_buf[i][osd_menu_offset + 19], resolution_runcam_micro_v3[camera_setting_reg_menu[i - 1]]);
                 }
                 osd_buf[i][osd_menu_offset + 29] = '>';
                 break;
@@ -465,6 +585,8 @@ void camera_menu_init(void) {
             osd_buf_p = osd_buf[i] + osd_menu_offset + 3;
             strcpy(osd_buf_p, cam_menu_string[i]);
         }
+        camera_profile_menu = camera_profile_eep;
+        camera_setting_reg_menu_update();
         camera_menu_draw_bracket();
         camera_menu_draw_value();
     }
@@ -480,6 +602,12 @@ void camera_menu_show_repower(void) {
     strcpy(osd_buf[3] + osd_menu_offset + 3, "NEED TO RECONFIG VTX(PRESS OK)");
     strcpy(osd_buf[4] + osd_menu_offset + 3, "NEED TO RECONFIG BW ON GOGGLE");
     strcpy(osd_buf[5] + osd_menu_offset + 3, "> OK");
+}
+
+void camera_menu_show_saving(void) {
+    memset(osd_buf, 0x20, sizeof(osd_buf));
+    strcpy(osd_buf[1] + osd_menu_offset + 3, "SAVING CAMERA PARAMETERS");
+    strcpy(osd_buf[2] + osd_menu_offset + 3, "DO NOT POWER OFF THE VTX");
 }
 
 void camera_menu_cursor_update(uint8_t erase) {
@@ -508,13 +636,13 @@ void camera_profile_menu_toggle(uint8_t op) {
         if (camera_profile_menu == CAMERA_PROFILE_NUM)
             camera_profile_menu = 0;
         camera_setting_reg_menu_update();
-        reset_isp_need |= camera_set(camera_setting_reg_menu, 0);
+        reset_isp_need |= camera_set(camera_setting_reg_menu, 0, 0);
     } else if (op == BTN_LEFT) {
         camera_profile_menu--;
         if (camera_profile_menu > CAMERA_PROFILE_NUM)
             camera_profile_menu = CAMERA_PROFILE_NUM - 1;
         camera_setting_reg_menu_update();
-        reset_isp_need |= camera_set(camera_setting_reg_menu, 0);
+        reset_isp_need |= camera_set(camera_setting_reg_menu, 0, 0);
     }
 }
 
@@ -563,7 +691,7 @@ void camera_setting_reg_menu_toggle(uint8_t op, uint8_t last_op) {
             if (camera_setting_reg_menu[item] > camera_attribute[item][CAM_SETTING_ITEM_MAX])
                 camera_setting_reg_menu[item] = camera_attribute[item][CAM_SETTING_ITEM_MAX];
 
-            camera_set(camera_setting_reg_menu, 0);
+            camera_set(camera_setting_reg_menu, 0, 0);
         } else if (op == BTN_LEFT) {
             step = camera_menu_long_press(op, last_op, 0);
             if (((camera_setting_reg_menu[item] - step) & 0xff) > camera_setting_reg_menu[item]) // overflow
@@ -574,7 +702,7 @@ void camera_setting_reg_menu_toggle(uint8_t op, uint8_t last_op) {
             if (camera_setting_reg_menu[item] < camera_attribute[item][CAM_SETTING_ITEM_MIN])
                 camera_setting_reg_menu[item] = camera_attribute[item][CAM_SETTING_ITEM_MIN];
 
-            camera_set(camera_setting_reg_menu, 0);
+            camera_set(camera_setting_reg_menu, 0, 0);
         } else if (op == BTN_MID) {
             step = camera_menu_long_press(op, last_op, 1);
         }
@@ -597,7 +725,7 @@ void camera_setting_reg_menu_toggle(uint8_t op, uint8_t last_op) {
                 camera_setting_reg_menu[item] = camera_attribute[item][CAM_SETTING_ITEM_MIN];
 
             if (camMenuStatus != CAM_STATUS_VDO_FMT) { // vdo format will be configured when exit camera menu
-                camera_set(camera_setting_reg_menu, 0);
+                camera_set(camera_setting_reg_menu, 0, 0);
             }
         } else if (op == BTN_LEFT) {
             camera_setting_reg_menu[item]--;
@@ -608,7 +736,7 @@ void camera_setting_reg_menu_toggle(uint8_t op, uint8_t last_op) {
                 camera_setting_reg_menu[item] = camera_attribute[item][CAM_SETTING_ITEM_MAX];
 
             if (camMenuStatus != CAM_STATUS_VDO_FMT) { // vdo format will be configured when exit camera menu
-                camera_set(camera_setting_reg_menu, 0);
+                camera_set(camera_setting_reg_menu, 0, 0);
             }
         }
         break;
@@ -623,8 +751,8 @@ uint8_t camera_status_update(uint8_t op) {
 
     uint8_t ret = 0;
     static uint8_t step = 1;
-    // static uint8_t cnt;
     static uint8_t last_op = BTN_RIGHT;
+    static uint16_t saving_start_sec = 0;
 
     if (op >= BTN_INVALID)
         return ret;
@@ -638,11 +766,8 @@ uint8_t camera_status_update(uint8_t op) {
     switch (camMenuStatus) {
     case CAM_STATUS_IDLE:
         if (op == BTN_MID) {
-            camera_profile_menu = camera_profile_eep;
-            camera_setting_reg_menu_update();
-
-            camera_menu_long_press(op, last_op, 1);
             reset_isp_need = 0;
+            camera_menu_long_press(op, last_op, 1);
 
             camMenuStatus = CAM_STATUS_PROFILE;
             camera_menu_cursor_update(0);
@@ -684,9 +809,11 @@ uint8_t camera_status_update(uint8_t op) {
         camera_menu_item_toggle(op);
 
         if (op == BTN_RIGHT) {
+            uint8_t video_mode = camera_setting_reg_menu[11];
             camera_setting_profile_reset(camera_profile_menu);
             camera_setting_reg_menu_update();
-            camera_set(camera_setting_reg_menu, 0);
+            camera_setting_reg_menu[11] = video_mode;
+            camera_set(camera_setting_reg_menu, 0, 0);
             camera_menu_draw_value();
         }
         break;
@@ -699,7 +826,7 @@ uint8_t camera_status_update(uint8_t op) {
 
         if (op == BTN_RIGHT) {
             camera_setting_reg_menu_update();
-            camera_set(camera_setting_reg_menu, 0);
+            camera_set(camera_setting_reg_menu, 0, 0);
 
             camMenuStatus = CAM_STATUS_IDLE;
             ret = 1;
@@ -713,32 +840,44 @@ uint8_t camera_status_update(uint8_t op) {
 
         if (op == BTN_RIGHT) {
             camera_profile_eep = camera_profile_menu;
+
+            if (RF_BW_to_be_changed()) {
+                camera_menu_show_repower();
+                camMenuStatus = CAM_STATUS_REPOWER;
+            } else {
+                camera_profile_write();
+                reset_isp_need |= camera_set(camera_setting_reg_menu, 1, 0);
+                camera_setting_reg_eep_update();
+                camera_setting_profile_write(0xff);
+
+                if (reset_isp_need) {
+                    if (camera_mfr == CAMERA_MFR_RUNCAM) {
+                        runcam_reset_isp();
+                        camera_mode_detect(0);
+                    }
+                }
+                camera_menu_show_saving();
+                saving_start_sec = seconds;
+                camMenuStatus = CAM_STATUS_SAVING;
+            }
+        }
+        break;
+    case CAM_STATUS_REPOWER:
+        if (op == BTN_RIGHT) {
+#ifdef _DEBUG_MODE
+            debugf("\r\nRF_Delay_Init: None");
+#endif
             camera_profile_write();
-            reset_isp_need |= camera_set(camera_setting_reg_menu, 1);
+            reset_isp_need |= camera_set(camera_setting_reg_menu, 1, 0);
             camera_setting_reg_eep_update();
             camera_setting_profile_write(0xff);
-
             if (reset_isp_need) {
                 if (camera_mfr == CAMERA_MFR_RUNCAM) {
                     runcam_reset_isp();
                     camera_mode_detect(0);
                 }
             }
-            if (RF_BW_check()) {
-                camMenuStatus = CAM_STATUS_REPOWER;
-                ret = 0;
-            } else {
-                camMenuStatus = CAM_STATUS_IDLE;
-                ret = 1;
-            }
-        }
-        break;
-    case CAM_STATUS_REPOWER:
-        camera_menu_show_repower();
-        if (op == BTN_RIGHT) {
-#ifdef _DEBUG_MODE
-            debugf("\r\nRF_Delay_Init: None");
-#endif
+
             if (PIT_MODE != PIT_OFF) {
                 Init_6300RF(RF_FREQ, POWER_MAX + 1);
                 vtx_pit = PIT_P1MW;
@@ -752,6 +891,15 @@ uint8_t camera_status_update(uint8_t op) {
                 WriteReg(0, 0x8F, 0x11);
             }
             DM6300_AUXADC_Calib();
+
+            camera_menu_show_saving();
+            saving_start_sec = seconds;
+            camMenuStatus = CAM_STATUS_SAVING;
+        }
+        break;
+
+    case CAM_STATUS_SAVING:
+        if (seconds - saving_start_sec > 1) {
             camMenuStatus = CAM_STATUS_IDLE;
             ret = 1;
         }

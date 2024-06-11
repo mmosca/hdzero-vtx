@@ -23,7 +23,7 @@ const uint8_t runcam_micro_v1_attribute[CAMERA_SETTING_NUM][4] = {
     // wb blue
     {1, 0x00, 0xff, 0xca},
     // hv flip
-    {0, 0x00, 0x01, 0x00},
+    {0, 0x00, 0x03, 0x00},
     // night mode
     {0, 0x00, 0x01, 0x01},
     // led mode
@@ -55,7 +55,7 @@ const uint8_t runcam_micro_v2_attribute[CAMERA_SETTING_NUM][4] = {
     // wb blue
     {1, 0x00, 0xff, 0xca},
     // hv flip
-    {1, 0x00, 0x01, 0x00},
+    {1, 0x00, 0x03, 0x00},
     // night mode
     {1, 0x00, 0x01, 0x01},
     // led mode
@@ -87,13 +87,45 @@ const uint8_t runcam_nano_90_attribute[CAMERA_SETTING_NUM][4] = {
     // wb blue
     {1, 0x00, 0xff, 0xca},
     // hv flip
-    {1, 0x00, 0x01, 0x00},
+    {1, 0x00, 0x03, 0x00},
     // night mode
     {1, 0x00, 0x01, 0x01},
     // led mode
     {1, 0x00, 0x01, 0x00},
     // video fmt
     {1, 0x00, 0x03, 0x00},
+
+    {0, 0x00, 0x00, 0x00},
+    {0, 0x00, 0x00, 0x00},
+    {0, 0x00, 0x00, 0x00},
+    {0, 0x00, 0x00, 0x00},
+};
+
+const uint8_t runcam_micro_v3_attribute[CAMERA_SETTING_NUM][4] = {
+    // brightness
+    {1, 0x40, 0xC0, 0x80},
+    // sharpness
+    {1, 0x00, 0x02, 0x01},
+    // contrast
+    {1, 0x00, 0x02, 0x01},
+    // saturation
+    {1, 0x00, 0x06, 0x05},
+    // shutter speed
+    {1, 0x00, 0x20, 0x00},
+    // wb mode
+    {1, 0x00, 0x01, 0x00},
+    // wb red
+    {1, 0x00, 0xff, 0xc7},
+    // wb blue
+    {1, 0x00, 0xff, 0xca},
+    // hv flip
+    {1, 0x00, 0x03, 0x00},
+    // night mode
+    {1, 0x00, 0x01, 0x01},
+    // led mode
+    {1, 0x00, 0x01, 0x00},
+    // video fmt
+    {1, 0x00, 0x03, 0x02},
 
     {0, 0x00, 0x00, 0x00},
     {0, 0x00, 0x00, 0x00},
@@ -132,6 +164,17 @@ void runcam_type_detect(void) {
                 for (j = 0; j < 4; j++)
                     camera_attribute[i][j] = runcam_nano_90_attribute[i][j];
             }
+            return;
+        }
+
+        rdat = RUNCAM_Read(RUNCAM_MICRO_V3, 0x50);
+        if (rdat != 0x00000000 && rdat != 0xffffffff) {
+            camera_type = CAMERA_TYPE_RUNCAM_MICRO_V3;
+            camera_device = RUNCAM_MICRO_V3;
+            for (i = 0; i < CAMERA_SETTING_NUM; i++) {
+                for (j = 0; j < 4; j++)
+                    camera_attribute[i][j] = runcam_micro_v3_attribute[i][j];
+            }
         }
     }
 }
@@ -165,6 +208,8 @@ void runcam_brightness(uint8_t val, uint8_t led_mode) {
     if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V1)
         d = 0x0452004e;
     else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2)
+        d = 0x04500050;
+    else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3)
         d = 0x04500050;
     else // if (camera_type == CAMERA_TYPE_RUNCAM_NANO_90)
         d = 0x04480048;
@@ -240,7 +285,7 @@ void runcam_contrast(uint8_t val) {
 #endif
 }
 
-uint8_t runcam_saturation(uint8_t val) {
+void runcam_saturation(uint8_t val) {
     uint8_t ret = 1;
     uint32_t d;
 
@@ -267,12 +312,11 @@ uint8_t runcam_saturation(uint8_t val) {
     else if (val == 6)
         d += 0x04041418;
 
-    ret = RUNCAM_Read_Write(camera_device, 0x0003A4, d);
+    RUNCAM_Read_Write(camera_device, 0x0003A4, d);
 
 #ifdef _DEBUG_RUNCAM
     debugf("\r\nRUNCAM saturation:%02x", (uint16_t)val);
 #endif
-    return ret;
 }
 
 void runcam_wb(uint8_t wbMode, uint8_t wbRed, uint8_t wbBlue) {
@@ -304,15 +348,19 @@ void runcam_wb(uint8_t wbMode, uint8_t wbRed, uint8_t wbBlue) {
 }
 
 void runcam_hv_flip(uint8_t val) {
-    if (camera_type != CAMERA_TYPE_RUNCAM_MICRO_V2 && camera_type != CAMERA_TYPE_RUNCAM_NANO_90)
+    if (camera_type != CAMERA_TYPE_RUNCAM_MICRO_V2 && camera_type != CAMERA_TYPE_RUNCAM_NANO_90 && camera_type != CAMERA_TYPE_RUNCAM_MICRO_V3)
         return;
 
     camera_setting_reg_set[8] = val;
 
-    if (val == 0)
+    if (val == 0) // no flip
         RUNCAM_Read_Write(camera_device, 0x000040, 0x0022ffa9);
-    else if (val == 1)
+    else if (val == 1) // hv flip
         RUNCAM_Read_Write(camera_device, 0x000040, 0x002effa9);
+    else if (val == 2) // v flip
+        RUNCAM_Read_Write(camera_device, 0x000040, 0x002affa9);
+    else if (val == 3) // h flip
+        RUNCAM_Read_Write(camera_device, 0x000040, 0x0026ffa9);
 #ifdef _DEBUG_RUNCAM
     debugf("\r\nRUNCAM hvFlip:%02x", (uint16_t)val);
 #endif
@@ -323,16 +371,22 @@ void runcam_night_mode(uint8_t val) {
         0: night mode off
         1: night mode on
     */
-    if (camera_type != CAMERA_TYPE_RUNCAM_MICRO_V2 && camera_type != CAMERA_TYPE_RUNCAM_NANO_90)
+    if (camera_type != CAMERA_TYPE_RUNCAM_MICRO_V2 && camera_type != CAMERA_TYPE_RUNCAM_NANO_90 && camera_type != CAMERA_TYPE_RUNCAM_MICRO_V3)
         return;
 
     camera_setting_reg_set[9] = val;
 
     if (val == 0) { // Max gain off
         RUNCAM_Read_Write(camera_device, 0x000070, 0x10000040);
-        RUNCAM_Read_Write(camera_device, 0x000718, 0x30002900);
-        RUNCAM_Read_Write(camera_device, 0x00071c, 0x32003100);
-        RUNCAM_Read_Write(camera_device, 0x000720, 0x34003300);
+        if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3) {
+            RUNCAM_Read_Write(camera_device, 0x000718, 0x30003000);
+            RUNCAM_Read_Write(camera_device, 0x00071c, 0x32003200);
+            RUNCAM_Read_Write(camera_device, 0x000720, 0x34003400);
+        } else {
+            RUNCAM_Read_Write(camera_device, 0x000718, 0x30002900);
+            RUNCAM_Read_Write(camera_device, 0x00071c, 0x32003100);
+            RUNCAM_Read_Write(camera_device, 0x000720, 0x34003300);
+        }
     } else if (val == 1) { // Max gain on
         RUNCAM_Read_Write(camera_device, 0x000070, 0x10000040);
         RUNCAM_Read_Write(camera_device, 0x000718, 0x28002700);
@@ -344,7 +398,7 @@ void runcam_night_mode(uint8_t val) {
 #endif
 }
 
-void runcam_video_format(uint8_t val) {
+uint8_t runcam_video_format(uint8_t val) {
     /*
     RUNCAM_MICRO_V2:
         0: 1280x720@60 4:3
@@ -358,38 +412,56 @@ void runcam_video_format(uint8_t val) {
         2: 720x540@60 4:3
         3: 960x720@60 4:3
     */
+    uint8_t ret = 0;
+
     camera_setting_reg_set[11] = val;
 
     if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V1)
-        return;
+        ;
     else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2) {
         if (val == 0)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x0008910B);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x0008910B);
         else if (val == 1)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x00089102);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x00089102);
         else if (val == 2)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x00089110);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x00089110);
         else if (val == 3) // 1080p30
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x81089106);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x81089106);
 
         if (val == 3) // 1080p30
-            RUNCAM_Read_Write(camera_device, 0x000034, 0x00014441);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000034, 0x00014441);
         else
-            RUNCAM_Read_Write(camera_device, 0x000034, 0x00012941);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000034, 0x00012941);
+    } else if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3) {
+        if (val == 0)
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x8208910B);
+        else if (val == 1)
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x82089102);
+        else if (val == 2)
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x82089110);
+        else if (val == 3)
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x81089106);
 
+        if (val == 3) // 1080p30
+            ret |= RUNCAM_Read_Write(camera_device, 0x000034, 0x00014441);
+        else
+            ret |= RUNCAM_Read_Write(camera_device, 0x000034, 0x00012941);
     } else if (camera_type == CAMERA_TYPE_RUNCAM_NANO_90) {
         if (val == 0)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x8008811d);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x8008811d);
         else if (val == 1)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x83088120);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x83088120);
         else if (val == 2)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x8108811e);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x8108811e);
         else if (val == 3)
-            RUNCAM_Read_Write(camera_device, 0x000008, 0x8208811f);
+            ret |= RUNCAM_Read_Write(camera_device, 0x000008, 0x8208811f);
     }
+
 #ifdef _DEBUG_RUNCAM
     debugf("\r\nRUNCAM video format:%02x", (uint16_t)val);
 #endif
+
+    return ret;
 }
 
 void runcam_shutter(uint8_t val) {
@@ -408,7 +480,7 @@ void runcam_shutter(uint8_t val) {
         return;
     } else {
         if (val == 0) { // auto
-            if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2)
+            if (camera_type == CAMERA_TYPE_RUNCAM_MICRO_V2 || camera_type == CAMERA_TYPE_RUNCAM_MICRO_V3)
                 dat = 0x460;
             else if (camera_type == CAMERA_TYPE_RUNCAM_NANO_90)
                 dat = 0x447;
@@ -504,8 +576,7 @@ uint8_t runcam_set(uint8_t *setting_profile) {
         runcam_night_mode(setting_profile[9]);
 
     if (!init_done || runcam_setting_update_need(setting_profile, 11, 11)) {
-        runcam_video_format(setting_profile[11]);
-        ret = 1;
+        ret = runcam_video_format(setting_profile[11]);
     }
     if (!init_done)
         init_done = 1;

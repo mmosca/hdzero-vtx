@@ -12,9 +12,11 @@
 // #define HDZERO_WHOOP_LITE
 // #define HDZERO_RACE_V1
 // #define HDZERO_RACE_V2
-// #define HDZERO_FREESTYLE
+// #define HDZERO_FREESTYLE_V1
 // #define FOXEER_VTX
 // #define HDZERO_RACE_V3
+// #define HDZERO_FREESTYLE_V2
+// #define HDZERO_ECO
 
 /* define VTX ID start */
 #if defined HDZERO_WHOOP
@@ -25,12 +27,16 @@
 #define VTX_ID 0x56
 #elif defined HDZERO_RACE_V2
 #define VTX_ID 0x57
-#elif defined HDZERO_FREESTYLE
+#elif defined HDZERO_FREESTYLE_V1
 #define VTX_ID 0x58
 #elif defined FOXEER_VTX
 #define VTX_ID 0x59
 #elif defined HDZERO_RACE_V3
 #define VTX_ID 0x5a
+#elif defined HDZERO_FREESTYLE_V2
+#define VTX_ID 0x5b
+#elif defined HDZERO_ECO
+#define VTX_ID 0x5c
 #else
 #define VTX_ID 0x00
 #endif
@@ -44,12 +50,16 @@
 #define VTX_NAME "HDZ RACE V1"
 #elif defined HDZERO_RACE_V2
 #define VTX_NAME "HDZ RACE V2"
-#elif defined HDZERO_FREESTYLE
-#define VTX_NAME "HDZ FREESTYLE"
+#elif defined HDZERO_FREESTYLE_V1
+#define VTX_NAME "HDZ FREESTYLE V1"
 #elif defined FOXEER_VTX
 #define VTX_NAME "FOX VTX"
 #elif defined HDZERO_RACE_V3
 #define VTX_NAME "HDZ RACE V3"
+#elif defined HDZERO_FREESTYLE_V2
+#define VTX_NAME "HDZ FREESTYLE V2"
+#elif defined HDZERO_ECO
+#define VTX_NAME "HDZ ECO"
 #else
 #define VTX_NAME "  "
 #endif
@@ -66,6 +76,7 @@
 // #define REV_UART
 // #define VIDEO_PAT
 // #define FIX_EEP
+// #define RESET_CONFIG
 
 #ifndef _RF_CALIB
 // #define _DEBUG_MODE
@@ -109,9 +120,8 @@
 #define WAIT_SA_CONFIG 3
 #endif
 
-#define CFG_TO_SEC  10
-#define CAM_DET_DLY 1000
-#define DISP_TIME   3 // 3/8s
+#define CFG_TO_SEC 10
+#define DISP_TIME  3 // 3/8s
 
 // gpio
 #define SCL     P0_0
@@ -160,13 +170,15 @@
 #define Rom_ready() RS_ready()
 
 #define FREQ_R1 (uint16_t)5658
-#define FREQ_R2 (uint16_t)5696
+#define FREQ_R2 (uint16_t)5695
 #define FREQ_R3 (uint16_t)5732
 #define FREQ_R4 (uint16_t)5769
 #define FREQ_R5 (uint16_t)5806
 #define FREQ_R6 (uint16_t)5843
 #define FREQ_R7 (uint16_t)5880
 #define FREQ_R8 (uint16_t)5917
+#define FREQ_E1 (uint16_t)5705
+#define FREQ_F1 (uint16_t)5740
 #define FREQ_F2 (uint16_t)5760
 #define FREQ_F4 (uint16_t)5800
 #define FREQ_L1 (uint16_t)5362

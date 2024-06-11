@@ -121,9 +121,10 @@ uint8_t I2C_Write8(uint8_t slave_addr, uint8_t reg_addr, uint8_t val) {
 }
 
 uint8_t I2C_Write8_Wait(uint16_t ms, uint8_t slave_addr, uint8_t reg_addr, uint8_t val) {
-    WAIT(ms);
-    // debugf("\r\nEEP:0x%04x, 0x%04x", reg_addr, (uint16_t)val);
-    return I2C_Write8(slave_addr, reg_addr, val);
+    uint8_t ret;
+    ret = I2C_Write8(slave_addr, reg_addr, val);
+    WAIT(ms + 2);
+    return ret;
 }
 
 uint8_t I2C_Write16(uint8_t slave_addr, uint16_t reg_addr, uint16_t val) {
@@ -406,10 +407,12 @@ uint32_t RUNCAM_Read(uint8_t cam_id, uint32_t addr) {
 }
 
 /*
-    return 0: false
-           1: success
+    [return]
+    0: only read
+    1: read and write
 */
 uint8_t RUNCAM_Read_Write(uint8_t cam_id, uint32_t addr, uint32_t val) {
+    uint8_t ret = 0;
     uint32_t rdata;
 
     if (cam_id == RUNCAM_MICRO_V1)
@@ -418,10 +421,9 @@ uint8_t RUNCAM_Read_Write(uint8_t cam_id, uint32_t addr, uint32_t val) {
         rdata = RUNCAM_Read(cam_id, addr);
 
     if (rdata != val) {
-        if (RUNCAM_Write(cam_id, addr, val) == 0)
-            return 1;
-        else
-            return 0;
-    } else
-        return 1;
+        RUNCAM_Write(cam_id, addr, val);
+        ret = 1;
+    }
+
+    return ret;
 }
